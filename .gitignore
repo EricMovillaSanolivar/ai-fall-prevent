@@ -1,0 +1,12 @@
+# Ignorar archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales
+venv/
+.env/
+
+# Archivos de configuración locales
+*.env
+*.DS_Store
