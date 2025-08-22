@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stretcher Monitoring</title>
+    <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>
+    <main>
+        <aside>
+            <details>
+                <summary>Video Sources</summary>
+                <li>
+                    <button id="addSource">+ Add source</button>
+                </li>
+                <ul id="sources">
+                </ul>
+            </details>
+            <details>
+                <summary>Geofences</summary>
+                <li>
+                    <button id="geofenceToggle">Search</button>
+                </li>
+                <ul id="fences">
+                </ul>
+            </details>
+            <details>
+                <summary>Alerts</summary>
+                <li>
+                    <button id="addAlert">+ Add alert</button>
+                </li>
+                <ul id="alerts">
+                </ul>
+            </details>
+        </aside>
+        <section id="videoFeed">
+        </section>
+    </main>
+
+    <dialog id="sourcesModal">
+        <h3>Please select a video source to add</h3>
+        <section>
+                <div>
+                    <select id="sourceList"></select>
+                </div>
+            <video></video>
+            <div>
+                <button class="cancel">Cancel</button>
+                <button class="accept">Accept</button>
+            </div>
+        </section>
+    </dialog>
+    <dialog id="fencesModal">
+        <h3>Please select a fence and alert for <span id="fenceTarget">Camera</span></h3>
+        <section>
+            <div>
+                <select id="setFencesList"></select>
+            </div>
+            <div>
+                <select id="setAlertsList"></select>
+            </div>
+            <div>
+                <button class="cancel">Cancel</button>
+                <button class="accept">Accept</button>
+            </div>
+        </section>
+    </dialog>
+    <dialog id="alertsModal">
+        <h3>Please follow the steps to create a new alert</h3>
+        <section>
+            <div>
+                <select id="alertType">
+                    <option value="" hidden>Select and option...</option>
+                    <option value="local">In Situ</option>
+                    <option value="mail">Via Gmail</option>
+                    <option value="telegram">Via Telegram</option>
+                </select>
+            </div>
+            <div>
+                <label for="alertId">AppScript ID or Telegram bot token</label>
+                <input type="text" id="alertId" placeholder="Enter an Id">
+            </div>
+            <div>
+                <label for="alertRecipient">Lang code (In situ), comma sepparated emails (Gmail) or ChatId (Telegram)</label>
+                <input type="text" id="alertRecipient" placeholder="Enter a Recipient">
+            </div>
+            <div>
+                <label for="alertSubject">Alert subject (Both Gmail and Telegram)</label>
+                <input type="text" id="alertSubject" placeholder="Enter a Subject">
+            </div>
+            <div>
+                <label for="alertContent">Message content. <strong>Use [fence] as placeholder.</strong></label>
+                <input type="text" id="alertContent" placeholder="This is an example where [fence] is changed to 'camilla-10'">
+            </div>
+            <div>
+                <button class="cancel">Cancel</button>
+                <button class="accept">Accept</button>
+            </div>
+        </section>
+    </dialog>
+    <script type="module" src="../static/main.js"></script>
+</body>
+</html>
