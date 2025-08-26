@@ -51,26 +51,26 @@ except FileNotFoundError:
 # ----------------------------------------
 
 # Fences references
-FENCES_PATH = Path("./data/fences.json")
-FENCES_PATH.parent.mkdir(parents=True, exist_ok=True)  # ensure ./data exists
-FENCES = None
-fences_file = None
+SOURCES_PATH = Path("./data/sources.json")
+SOURCES_PATH.parent.mkdir(parents=True, exist_ok=True)  # ensure ./data exists
+SOURCES = None
+sources_file = None
 
 try:
-    fences_file = FENCES_PATH.open("r+", encoding="utf-8") # READ + WRITE
+    sources_file = SOURCES_PATH.open("r+", encoding="utf-8") # READ + WRITE
     try:
-        FENCES = json.load(fences_file)
+        SOURCES = json.load(sources_file)
     except json.JSONDecodeError:
         # empty file or corrupt
-        FENCES = {}
-        fences_file.seek(0)
-        json.dump(FENCES, fences_file, ensure_ascii=False, indent=2)
-        fences_file.truncate()
+        SOURCES = {}
+        sources_file.seek(0)
+        json.dump(SOURCES, sources_file, ensure_ascii=False, indent=2)
+        sources_file.truncate()
 except FileNotFoundError:
-    fences_file = FENCES_PATH.open("w+", encoding="utf-8")  # Create if not exists
-    FENCES = {}
-    json.dump(FENCES, fences_file, ensure_ascii=False, indent=2)
-    fences_file.flush()
+    sources_file = SOURCES_PATH.open("w+", encoding="utf-8")  # Create if not exists
+    SOURCES = {}
+    json.dump(SOURCES, sources_file, ensure_ascii=False, indent=2)
+    sources_file.flush()
     
 
 
@@ -80,12 +80,12 @@ except FileNotFoundError:
 
 def get_file(name):
     """
-    Read fences/alerts json file content.
+    Read sources/alerts json file content.
     """
-    global fences_file
+    global sources_file
     global alerts_file
     
-    file = fences_file if name == "fences" else alerts_file
+    file = sources_file if name == "sources" else alerts_file
     file.seek(0)  # back to begining
     try:
         return json.load(file)
@@ -95,12 +95,12 @@ def get_file(name):
 
 def update_file(name, data):
     """
-    Update fences json file content.
+    Update sources/alerts json file content.
     """
-    global fences_file
+    global sources_file
     global alerts_file
     
-    file = fences_file if name == "fences" else alerts_file
+    file = sources_file if name == "sources" else alerts_file
     
     file.seek(0)  # back to begining
     json.dump(data, file, ensure_ascii=False, indent=2)
@@ -279,17 +279,17 @@ def segment_touch():
 # --------------------------------------------------------------------
 
 # ----------------------------------------
-# --------------- FENCES STORAGE STUFF ---
+# --------------- SOURCES STORAGE STUFF --
 # ----------------------------------------
 
-@app.route('/fences/save', methods=['POST'])
-def save_fence():
+@app.route('/sources/save', methods=['POST'])
+def save_source():
     """
-    Save a new fence
+    Save a new source
     ---
     Args:
-        id (str): Fence id
-        data (dict): Fence data
+        id (str): Source id
+        data (dict): Source data
     """
     try:
         params = request.get_json()
@@ -303,38 +303,38 @@ def save_fence():
         data = params["data"]
         
         # Update fence
-        FENCES[id] = data
-        update_file("fences", FENCES)
+        SOURCES[id] = data
+        update_file("sources", SOURCES)
         
         # Return response
-        return success({ "message": "Fence have been saved succesfully.", "data": FENCES })
+        return success({ "message": "Source have been saved succesfully.", "data": SOURCES })
     except Exception as err:
-        print(f"Save fence error: {str(err)}")
-        return server_error(f"Save fence error: {str(err)}")
+        print(f"Save source error: {str(err)}")
+        return server_error(f"Save source error: {str(err)}")
 # --------------------------------------------------------------------
 # --------------------------------------------------------------------
 
 
-@app.route('/fences/load', methods=['GET'])
-def load_fence():
+@app.route('/sources/load', methods=['GET'])
+def load_source():
     """
-    Load all fence data
+    Load all source data
     ---
     """
     try:        
         # Return response
-        return success({ "data": get_file("fences") })
+        return success({ "data": get_file("sources") })
     except Exception as err:
-        print(f"Load fences error: {str(err)}")
-        return server_error(f"Load fences error: {str(err)}")
+        print(f"Load sources error: {str(err)}")
+        return server_error(f"Load sources error: {str(err)}")
 # --------------------------------------------------------------------
 # --------------------------------------------------------------------
 
 
-@app.route('/fences/remove', methods=['POST'])
-def remove_fence():
+@app.route('/sources/remove', methods=['POST'])
+def remove_source():
     """
-    Save a new fence
+    Save a new source
     ---
     Args:
         id (str): Fence id
@@ -347,15 +347,15 @@ def remove_fence():
             
         id = params["id"]
         
-        # Remove fence
-        del FENCES[id]
-        update_file("fences", FENCES)
+        # Remove source
+        del SOURCES[id]
+        update_file("sources", SOURCES)
         
         # Return response
-        return success({ "message": "Fence have been deleted succesfully.", "data": FENCES })
+        return success({ "message": "Source have been deleted succesfully.", "data": SOURCES })
     except Exception as err:
-        print(f"Save fence error: {str(err)}")
-        return server_error(f"Save fence error: {str(err)}")
+        print(f"Save source error: {str(err)}")
+        return server_error(f"Save source error: {str(err)}")
 # --------------------------------------------------------------------
 # --------------------------------------------------------------------
 
@@ -499,7 +499,7 @@ def send_tg():
         tg_form["caption"] = params["content"]
         files = { "photo": ("evidence", image.stream, mimetype)}
         
-        upstream = requests.post( TG_URL, data=tg_form, files=files, timeout=15)
+        upstream = requests.post(TG_URL, data=tg_form, files=files)
         try:
             data = upstream.json()
             return success(data)

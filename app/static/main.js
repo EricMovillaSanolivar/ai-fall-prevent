@@ -1,8 +1,7 @@
-import { serverLoadFences, serverUpdateFence, serverRemoveFence, serverLoadAlerts, serverUpdateAlert, serverRemoveAlert, sendViaGmail, sendViaTelegram } from "./backend.js";
+import { serverLoadSources, serverUpdateSource, serverRemoveSource, serverLoadAlerts, serverUpdateAlert, serverRemoveAlert, sendViaGmail, sendViaTelegram } from "./backend.js";
 
 // MENU
 const $activeSources = document.querySelector("#sources");
-const $activeFences = document.querySelector("#fences");
 const $activeAlerts = document.querySelector("#alerts");
 const $addSource = document.querySelector("#addSource");
 const $addAlert = document.querySelector("#addAlert");
@@ -14,17 +13,12 @@ const $videoFeed = document.querySelector("#videoFeed");
 const $sourcesModal = document.querySelector("#sourcesModal");
 // Get inner elements
 const $sourceList = $sourcesModal.querySelector("#sourceList");
+const $sourceAlerts = $sourcesModal.querySelector("#sourceAlerts");
 const $preview = $sourcesModal.querySelector("video");
+const $previewOverlay = $sourcesModal.querySelector("canvas");
+const $sourceName = $sourcesModal.querySelector("#sourceName");
 const $sourceCancel = $sourcesModal.querySelector(".cancel");
 const $sourceAccept = $sourcesModal.querySelector(".accept");
-// Geofence Toggle
-const $geofenceToggle = document.querySelector("#geofenceToggle");
-// Fence modal
-const $fencesModal = document.querySelector("#fencesModal");
-const $setFencesList = $fencesModal.querySelector("#setFencesList");
-const $setAlertsList = $fencesModal.querySelector("#setAlertsList");
-const $fenceCancel = $fencesModal.querySelector(".cancel");
-const $fenceAccept = $fencesModal.querySelector(".accept");
 
 // Alert modal
 const $alertsModal = document.querySelector("#alertsModal");
@@ -35,8 +29,6 @@ const $alertId = $alertsModal.querySelector("#alertId");
 const $alertRecipient = $alertsModal.querySelector("#alertRecipient");
 const $alertSubject = $alertsModal.querySelector("#alertSubject");
 const $alertContent = $alertsModal.querySelector("#alertContent");
-
-
 
 
 
@@ -59,13 +51,6 @@ let PREVIEW_STREAM;
 /** Overlays reference */
 const OVERLAYS = {};
 
-
-/** Geofence search engine enabled */
-let geoSearchEnabled = false;
-/** FENCES reference.*/
-let FENCES = [];
-
-
 /** ALERTS reference.*/
 let ALERTS = [];
 
@@ -83,11 +68,19 @@ const removeSource = (e) => {
     // Get id
     const id = e.target.getAttribute("target-id");
     // Find video source
-    const source = activeSourcesList.find(src => src.id == id);
+    const source = activeSourcesList.find(src => src.name == id);
     // Confirm
     const wannaRemove = confirm(`Do you want to remove ${source.name} from video sources?`);
     // Remove source
-    if (source && wannaRemove) updateActiveSrc("remove", source, id);
+    // if (source && wannaRemove) updateActiveSrc("remove", source, id);
+    if (source && wannaRemove) serverRemoveSource(
+        source.name,
+        res => {
+            alert(res.message);
+            activeSourcesList = Object.values(res.data);
+            feedSources();
+        }
+    );
 }
 
 /**
@@ -98,9 +91,15 @@ const toggleVisibility = (e) => {
     // Get id
     const id = e.target.getAttribute("target-id");
     // Find in settings
-    const item = activeSourcesList.find(src => src.id == id);
+    const item = activeSourcesList.find(src => src.name == id);
+    if (!item) return;
+    item.hidden = !item.hidden;
     // Update
-    updateActiveSrc("update", { hidden: !item.hidden }, id);
+    serverUpdateSource(item.name, item, res => {
+        if (res.status != "ok") return alert(res.message);
+        activeSourcesList = Object.values(res.data);
+        feedSources();
+    })
 }
 
 
@@ -114,75 +113,46 @@ const toggleMonitoring = (e) => {
     // Toggle parent style
     e.target.parentNode.classList.toggle("deactivated");
     // Find in settings
-    const item = activeSourcesList.find(it => it.id == id);
-    // Toggle
-    updateActiveSrc("update", { monitoring: !item.monitoring }, id);
+    const item = activeSourcesList.find(it => it.name == id);
+    if (!item) return;
+    item.monitoring = !item.monitoring;
+    // Update
+    serverUpdateSource(item.name, item, res => {
+        if (res.status != "ok") return alert(res.message);
+        activeSourcesList = Object.values(res.data);
+        feedSources();
+    })
 }
 
 
 /**
  * Show sources modal and feed with available video sources
  */
-const sourceRequest = () => {
+const sourceRequest = (ev) => {
+    // ToDo: Manage edit
+    ev.preventDefault();
+    const target = ev.target.getAttribute("target-id");
     // Show modal
     $sourcesModal.showModal();
     // Clear and re-feed source list
-    $sourceList.innerHTML = "<option hidden>Select...</option>"
+    $sourceList.innerHTML = "<option hidden value='null'>Select...</option>";
     availableVideoSources.forEach(dev => {
         $sourceList.innerHTML += `<option value="${dev.id}">${dev.name.split("(")[0]}</option>`;
     });
-}
+    // Clear and re-feed alert list
+    $sourceAlerts.innerHTML = "<option hidden value='null'>Select...</option>";
+    ALERTS.forEach(alrt => {
+        console.log(alrt)
+        $sourceAlerts.innerHTML += `<option value="${alrt.name}">${alrt.name}</option>`;
+    });
 
-
-/**
- * Remove fence
- * @param {object} e Event 
- */
-const removeFence = (e) => {
-    // Get id
-    const id = e.target.getAttribute("target-id");
-    // Find fence source
-    const fence = [...FENCES].find(fnc => fnc.name == id);
-    if (!fence) return;
-    // Find source video using this fence
-    const src = [...activeSourcesList].find(src => src.fence == fence.name);
-    // Confirm
-    const wannaRemove = confirm(`Do you want to remove the fence named '${fence.name}'?\n${!src ? "": "Fence is being used by " + src.name }`);
-    // Remove source
-    if (wannaRemove) {
-        serverRemoveFence(id, e => {
-            alert(res.message);
-            FENCES = Object.values(res.data);
-            feedFences();
-        });
-        if (src) updateActiveSrc("update", { fence: null }, src.id);
+    if (target) {
+        const src = activeSourcesList.find(sr => sr.name == target);
+        $sourceName.value = src.name;
+        $sourceList.value = src.id;
+        $sourceAlerts.value = src.alert;
+        CURRENT_BBX = src.bbox;
     }
-}
-
-
-/**
- * Show modal and feed with available fences
- */
-const fenceRequest = (ev) => {
-    ev.preventDefault();
-    // Show modal
-    $fencesModal.showModal();
-    // Search source
-    const src = activeSourcesList.find(src => src.id == ev.target.getAttribute("target-id"));
-    // Update title
-    $fencesModal.querySelector("#fenceTarget").textContent = src.name;
-    // Clear and re-feed source list
-    $setFencesList.innerHTML = "<option hidden>Select...</option>"
-    FENCES.forEach(fence => {
-        $setFencesList.innerHTML += `<option value="${fence.name}">${fence.name}</option>`;
-    });
-    // Clear and re-feed source list
-    $setAlertsList.innerHTML = "<option hidden>Select...</option>";
-    ALERTS.forEach(alert => {
-        $setAlertsList.innerHTML += `<option value="${alert.name}">${alert.name}</option>`;
-    });
-    // add id to accept button
-    $fenceAccept.setAttribute("target-id", src.id);
 }
 
 
@@ -190,38 +160,6 @@ const fenceRequest = (ev) => {
 ********************************** VIDEO SOURCES STUFF *****************************
 ***********************************************************************************/
 
-/**
- * Update active video sources list syncing with session storage
- * @param {string} does Action to execute add/update/remove 
- * @param {*} id 
- * @param {*} newItem 
- * @returns 
- */
-const updateActiveSrc = (does, newItem, id) => {
-    switch(does){
-        case "add":
-            // Add the new item
-            activeSourcesList.push(newItem);
-            break;
-        case "update":
-            // Update source
-            const item = activeSourcesList.find(src => src.id == id);
-            if (!item) return;
-            // Loop thru all new item properties to update the current item
-            for (let key of Object.keys(newItem)) {
-                item[key] = newItem[key];
-            }
-            break;
-        case "remove":
-            // Remove the item
-            activeSourcesList.splice(activeSourcesList.indexOf(newItem), 1);
-            break;
-    }
-    // Update on session storage
-    sessionStorage.setItem(KEY_ACTIVE_SRC, JSON.stringify(activeSourcesList));
-    // Re render
-    updateFeed();
-}
 
 /**
  * Render active video sources
@@ -230,7 +168,7 @@ const updateFeed = async () => {
     // Clear feed
     $videoFeed.innerHTML = "";
     // Choose video sources so show (selected/all)
-    const sources = [...activeSourcesList].filter(src => src.hidden == false);
+    const sources = [...activeSourcesList].filter(src => !src.hidden);
     // Adaptative view
     const cls = sources.length > 4 ? "src3" : sources.length > 1 ? "src2" : "src1";
     $videoFeed.className = cls;
@@ -250,10 +188,6 @@ const updateFeed = async () => {
         wrapper.appendChild(cnv);
         $videoFeed.appendChild(wrapper);
         vid.play();
-        // Assign id and targets
-        vid.setAttribute("target-id", source.id);
-        // Add click event listener for geofence search
-        vid.addEventListener("click", findGeofence);
         // On video loaded update canvas size
         vid.addEventListener("playing", () => {
                 const { width, height } = vid.getBoundingClientRect();
@@ -264,8 +198,8 @@ const updateFeed = async () => {
                 cnv.height = height;
             });
         // Update overlay reference
-        OVERLAYS[source.id] = { canvas: cnv, ctx: cnv.getContext("2d") };
-        VIDS[source.id] = vid;
+        OVERLAYS[source.name] = { canvas: cnv, ctx: cnv.getContext("2d") };
+        VIDS[source.name] = vid;
     }
 }
 
@@ -280,24 +214,24 @@ const feedSources = () => {
         // Parent list element
         const li = document.createElement("li");
         li.className = src.monitoring ? "": "deactivated";
-        li.title = "Press left click to edit fence and alerts.";
+        li.title = "Press left click to edit source.";
         // Device label
         const span = document.createElement("span");
-        span.innerHTML = `${name}<br/><strong>Alerts through: ${src.alert}</strong>`;
-        span.setAttribute("target-id", src.id);
+        span.innerHTML = `${name}<strong>Channel: ${src.alert}</strong>`;
+        span.setAttribute("target-id", src.name);
         span.addEventListener("click", toggleMonitoring);
-        span.addEventListener("contextmenu", fenceRequest);
+        span.addEventListener("contextmenu", sourceRequest);
         li.appendChild(span);
         // Visibility state
         const hidden = document.createElement("input");
-        hidden.setAttribute("target-id", src.id);
+        hidden.setAttribute("target-id", src.name);
         hidden.addEventListener("change", toggleVisibility);
         hidden.type = "checkbox";
         hidden.checked = src.hidden;
         li.appendChild(hidden);
         // Delete button
         const delBtn = document.createElement("button");
-        delBtn.setAttribute("target-id", src.id);
+        delBtn.setAttribute("target-id", src.name);
         delBtn.addEventListener("click", removeSource);
         li.appendChild(delBtn);
         $activeSources.appendChild(li);
@@ -309,47 +243,14 @@ const feedSources = () => {
 /* *********************************************************************************
 ********************************** FENCES STUFF ************************************
 ***********************************************************************************/
-/**
- * Render available fences in the menu
- */
-const feedFences = () => {
-    $activeFences.innerHTML = "";
-    for (let fence of FENCES) {
-        const name = fence.name;
-        // Parent list element
-        const li = document.createElement("li");
-        // Device label
-        const span = document.createElement("span");
-        span.textContent = name;
-        span.setAttribute("target-id", name);
-        // span.addEventListener("click", toggleMonitoring);
-        li.appendChild(span);
-        // Delete button
-        const delBtn = document.createElement("button");
-        delBtn.setAttribute("target-id", name);
-        delBtn.addEventListener("click", removeFence);
-        li.appendChild(delBtn);
-        $activeFences.appendChild(li);
-    }
-}
 
-/**
- * Toggle geofence search status
- */
-const geoToggle = () => {
-    // Show crosshair cursor
-    document.body.classList.toggle("crosshair");
-    $geofenceToggle.classList.toggle("active");
-    // Toggle geofence search status
-    geoSearchEnabled = !geoSearchEnabled;
-}
+let CURRENT_BBX;
 
 /**
  * Finds a geofence using interactive segmentation runing on backend
  * @param {event} ev Event used to retrieve the video element
  */
 const findGeofence = (ev) => {
-    if (!geoSearchEnabled) return;
     try {
         const vid = ev.target;
         // Get source video size
@@ -381,31 +282,17 @@ const findGeofence = (ev) => {
                             // Build geofence
                             findCornerPixelsFromMask(mask)
                                 .then( bbx => {
-                                    const targetId = vid.getAttribute("target-id");
-                                    FENCES[targetId] = bbx;
-                                    // Give enough time to draw the fence
-                                    setTimeout(async () => {
-                                        const fName = await prompt("Please name your fence: ");
-                                        if (fName != "" && fName != null) {
-                                            // Search existent fence
-                                            let fence = [...FENCES].find(item => item.name == fName);
-                                            if (fence) return alert("This fence name is already taken. Please review fence names.");
-                                            const id = vid.getAttribute("target-id");
-                                            // Update source
-                                            updateActiveSrc("update", { fence: fName }, id);
-                                            // Update server storage
-                                            fence = {
-                                                name: fName,
-                                                id: id,
-                                                bbox: bbx
-                                            }
-                                            serverUpdateFence(fName, fence, res => {
-                                                alert(res.message);
-                                                FENCES = Object.values(res.data);
-                                                feedFences();
-                                            });
-                                        }
-                                    }, 50);
+                                    CURRENT_BBX = [...bbx];
+                                    // Draw bbx on preview canvas
+                                    const ctx = $previewOverlay.getContext("2d");
+                                    const { width: w, height: h } = $preview.getBoundingClientRect();
+                                    $previewOverlay.width = w;
+                                    $previewOverlay.height = h;
+                                    ctx.clearRect(0, 0, w, h);
+                                    ctx.strokeStyle = "#0f0";
+                                    ctx.strokeWidth = 3;
+                                    ctx.rect(bbx[0] * w, bbx[1] * h, (bbx[2] - bbx[0]) * w, (bbx[3] - bbx[1]) * h);
+                                    ctx.stroke();
                                 });
                         }
                     })
@@ -453,10 +340,10 @@ const getFrame = (source, w, h, base64 = false) => {
  * @returns 
  */
 const clearCanvas = (src) => {
-    const ctx = OVERLAYS[src.id]?.ctx;
+    const ctx = OVERLAYS[src.name]?.ctx;
     if (!ctx) return;
     // Retrieve canvas size
-    const { width, height } = OVERLAYS[src.id].canvas.getBoundingClientRect();
+    const { width, height } = OVERLAYS[src.name].canvas.getBoundingClientRect();
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 }
@@ -466,14 +353,12 @@ const clearCanvas = (src) => {
  * @param {object} src Source object
  */
 const drawBbox = (src) => {
-    if (!src.fence) return;
+    if (!src.bbox || src.hidden) return;
     // Retrieve FENCES and context
-    const ctx = OVERLAYS[src.id].ctx;
-    const fence = [...FENCES].find(fen => fen.name == src.fence);
-    if (!fence) return;
-    const bbx = fence.bbox;
+    const ctx = OVERLAYS[src.name].ctx;
+    const bbx = src.bbox;
     // Retrieve canvas size
-    const { width, height } = OVERLAYS[src.id].canvas.getBoundingClientRect();
+    const { width, height } = OVERLAYS[src.name].canvas.getBoundingClientRect();
     // Draw a black overlay
     ctx.beginPath();
     ctx.fillStyle = "#0003";
@@ -501,9 +386,9 @@ const drawBbox = (src) => {
 const drawPose = (detections, src) => {
     if (detections.length == 0) return;
     // Retrieve FENCES and context
-    const ctx = OVERLAYS[src.id].ctx;
+    const ctx = OVERLAYS[src.name].ctx;
     // Retrieve canvas size
-    const { width, height } = OVERLAYS[src.id].canvas.getBoundingClientRect();
+    const { width, height } = OVERLAYS[src.name].canvas.getBoundingClientRect();
     // Loop thru keypoints
     for (let kp of detections[0].keypoints) {
         if (kp.x > 1 || kp.y > 1) continue;
@@ -517,6 +402,310 @@ const drawPose = (detections, src) => {
     return detections[0].keypoints;
 }
 
+
+/* *********************************************************************************
+********************************** ALERTS STUFF ************************************
+***********************************************************************************/
+
+/**
+ * Show alerts modal
+ */
+const alertRequest = () => {
+    $alertsModal.showModal();
+}
+
+
+/**
+ * Render available fences in the menu
+ */
+const feedAlerts = () => {
+    $activeAlerts.innerHTML = "";
+    for (let alrt of ALERTS) {
+        const name = alrt.name;
+        // Parent list element
+        const li = document.createElement("li");
+        // Device label
+        const span = document.createElement("span");
+        span.innerHTML = `${name}<strong>${alrt.type}</strong>`;
+        span.setAttribute("target-id", name);
+        li.appendChild(span);
+        // Delete button
+        const delBtn = document.createElement("button");
+        delBtn.setAttribute("target-id", name);
+        delBtn.addEventListener("click", e => {
+            serverRemoveAlert(e.target.getAttribute("target-id"), res => alert(res.message));
+        });
+        li.appendChild(delBtn);
+        $activeAlerts.appendChild(li);
+    }
+}
+
+const processNewAlert = async (e) => {
+    // Retrieve type
+    const type = $alertType.value;
+    // Retrieve id
+    const id = $alertId.value;
+    // Retrieve recipient
+    const recipient = $alertRecipient.value;
+    // Retrieve subject
+    const subject = $alertSubject.value;
+    // Retrieve content
+    const content = $alertContent.value;
+    if (!type || type == "") return alert("You should select a type of alert.");
+    if (content == "") return alert("Theres no content for the alert.");
+    if (!content.includes("[fence]")) return alert("You should include [fence] placeholder in your content.");
+    if (recipient == "") return alert(`Recipient field can't be empty. You should put your ${type == "mail" ? "comma separated emails": type == "telegram" ? "Telegram chat_id": "Lang code (es, en ...)"} here.`);
+    
+    let alrt;
+    switch (type) {
+        case "local":
+            alrt = { type, content, id: null };
+            break;
+        default:
+            if (id == "") return alert(`Id field can't be empty. You should put your ${type == "mail" ? "AppScript Id": "Telegram BotToken"} here.`);
+            if (recipient == "") return alert(`Recipient field can't be empty. You should put your ${type == "mail" ? "comma separated emails": "Telegram chat_id"} here.`);
+            if (subject == "") return alert(`Subject field can't be empty.`);
+            alrt = { type, id, recipient, subject, content, id: null};
+            break;
+    }
+
+    let name;
+    while (true) {
+        name = prompt("Please provide an unique name for this alert: ");
+        if(name != "") {
+            // Validate another alert with this name
+            const alrtNamed = ALERTS.find(al => al.name == name);
+            if (alrtNamed) {
+                alert("This alert name is already taken.");
+                continue;
+            }
+            // Save alert
+            serverUpdateAlert(
+                name, 
+                { id, name, type, recipient, content, subject},
+                res => {
+                    alert(res.message);
+                    console.log(res);
+                    if (res.status == "ok"){
+                        ALERTS = Object.values(res.data);
+                        feedAlerts();
+                    }
+                }
+            );
+            break;
+        } else {
+            break;
+        }
+    }
+}
+
+let isSpeaking = false;
+const processAlert = (alert, src) => {
+    const currTime = new Date().getTime();
+    // 30 seconds timeout
+    if (alert.type != "local") {
+        if (src.timeout && currTime - src.timeout < 30000) return;
+        activeSourcesList.find(sr => sr.name == src.name).timeout = currTime;
+    }
+
+    // Retrieve fence name
+    const name = src.name;
+    // Customize alert
+    const content = alert.content.replace("[fence]", name);
+    // Process type of alert
+    switch(alert.type){
+        case "local":
+            if (isSpeaking) return;
+            console.log("Synthesis request")
+            isSpeaking = true;
+            // Speech synthesis
+            const utt = new SpeechSynthesisUtterance(content);
+            // Customize speech synthesis
+            utt.lang = alert.recipient;
+            utt.rate = 0.9;
+            // Reset speech status
+            utt.onend = e => setTimeout(() => {
+                isSpeaking = false;
+            }, 1500);
+            // Request synthesis
+            speechSynthesis.speak(utt);
+            break;
+        
+        case "mail":
+            // Retrieve base64 image
+            getFrame(VIDS[src.name], 1280, 960, true)
+                .then(frame => {
+                    let attachment = [{ name: "evidence.jpg", contentType: "image/jpeg", base64: frame.split(",")[1] }];
+                    // Request email send
+                    sendViaGmail(alert.id, alert.recipient, alert.subject, content, attachment);
+                });
+            break;
+        
+        case "telegram":
+            // Retrieve blob image
+            getFrame(VIDS[src.name], 1280, 960, false)
+                .then(frame => {
+                    // Request message send
+                    sendViaTelegram(alert.id, alert.recipient, alert.subject, content, frame);
+                })
+            break;
+    }
+}
+
+
+/* *********************************************************************************
+********************************** PIPELINE ****************************************
+***********************************************************************************/
+
+const pipeline = () => {
+    // Filter monitored sources
+    const monitoring = [...activeSourcesList].filter(src => {
+        setTimeout(() => {
+            // Clear canvases
+            clearCanvas(src);
+            // Draw bbox
+            drawBbox(src);
+        }, 200);
+        // Filter monitored only
+        return src.monitoring;
+    });
+    // Validate there are sources for monitoring
+    if (monitoring.length == 0) {
+        setTimeout(() => {
+            requestAnimationFrame(pipeline);
+        }, 100);
+        return;
+    }
+    console.time("pipeline time");
+    // Build frames
+    const framesPromise = [];
+    for (let src of monitoring) {
+        framesPromise.push(new Promise((resolve,reject) => {
+            getFrame(VIDS[src.name], 640, 480)
+                .then(res => resolve({ src: src, frame: res }))
+                .catch(err => {
+                    console.log(err);
+                    resolve(null);
+                })
+        }))
+    }
+    // Request frames
+    Promise.all(framesPromise)
+        .then(responses => {
+            // Request poses
+            const posePromises = [];
+            for (let res of responses) {
+                if (res == null) continue;
+                posePromises.push(new Promise((resolve) => {
+                    requestPose(res.frame)
+                        .catch(err => {
+                            console.error(err)
+                            resolve(null)
+                        })
+                        .then(det => {
+                            det.src = res.src;
+                            resolve(det);
+                        })
+                }))
+            }
+            Promise.all(posePromises)
+                .catch(err => console.error(err))
+                .then(dets => {
+                    // Draw each box and keypoints
+                    for (let det of dets) {
+                        if (det.status != "ok") continue;
+                        // Draw pose
+                        const keyp = drawPose(det.detections, det.src);
+                        // Check hand up
+                        const lw = keyp.find(kp => kp.name == "leftWrist");
+                        const rw = keyp.find(kp => kp.name == "rightWrist");
+                        const ls = keyp.find(kp => kp.name == "leftShoulder");
+                        const rs = keyp.find(kp => kp.name == "rightShoulder");
+
+                        if (lw.y < ls.y || rw.y < rs.y){
+                            // Dispatch in situ alert
+                            processAlert({ 
+                                type: "local", 
+                                recipient: "en",
+                                content: "Wait a moment [fence]. You will be attended in a moment."
+                            }, det.src);
+                            // Dispatch default alert
+                            let modAlert = ALERTS.find(al => al.name == det.src.alert);
+                            if( modAlert ) {
+                                modAlert = {...modAlert};
+                                modAlert.content = "User [fence] needs your help. Please attend him";
+                                modAlert.subject = "An user needs help!";
+                                console.log(modAlert);
+                                processAlert(modAlert, det.src);
+                            }
+                            // const alrt = 
+                            continue;
+                        }
+                        // Check for collisions
+                        checkCollision(keyp, det.src);
+                    }
+                    console.timeEnd("pipeline time");
+                    requestAnimationFrame(pipeline);
+                })
+        })
+        .catch(err => console.error(err));
+}
+
+
+/**
+ * Performs pose detection on the backend
+ * @param {blob} frame Current video frame 
+ * @returns 
+ */
+const requestPose = async (frame) => {
+    if (!frame) return;
+    // Build form
+    const form = new FormData();
+    form.append("image", frame);
+    form.append("normalized", true);
+    // Send request
+    const request = await fetch("/vision/pose", {
+            method: "POST",
+            body: form
+        })
+    // Process response
+    const response = await request.json();
+    return response;
+}
+
+
+/**
+ * Check for collisions between the user with his respective fence
+ * @param {object} fence User fence
+ * @param {object} pose User pose
+ * @param {object} src Video source object
+ * @returns 
+ */
+const checkCollision = (pose, src) => {
+    if (!pose || !src.alert) return;
+    // Search alert
+    const alrt = ALERTS.find(al => al.name == src.alert);
+    if (!alrt) return;
+    // Filter keypoints outside visible area
+    const kpFiltered = pose.filter(kp => kp.x < 1 && kp.y < 1);
+    // Retrieve fence bbox
+    const [minx , miny, maxx, maxy] = src.bbox;
+    // check for collision
+    let collisions = 0;
+    for (let kp of kpFiltered) {
+        if (
+            kp.x < minx ||
+            kp.x > maxx ||
+            kp.y < miny ||
+            kp.y > maxy
+        ){
+            console.log(kp);
+            if (collisions >= 1) break;
+            collisions++;
+        }
+    }
+    if (collisions >= 1) processAlert(alrt, src);
+}
 
 
 /* *********************************************************************************
@@ -596,283 +785,6 @@ const map = (val, smin, smax, tmin, tmax) => {
 }
 
 
-
-
-/* *********************************************************************************
-********************************** PIPELINE ****************************************
-***********************************************************************************/
-
-const pipeline = () => {
-    // Filter monitored sources
-    const monitoring = [...activeSourcesList].filter(src => {
-        setTimeout(() => {
-            // Clear canvases
-            clearCanvas(src);
-            // Draw bbox
-            drawBbox(src);
-        }, 200);
-        // Filter monitored only
-        return src.monitoring;
-    });
-    // Validate there are sources for monitoring
-    if (monitoring.length == 0) {
-        setTimeout(() => {
-            requestAnimationFrame(pipeline);
-        }, 100);
-        return;
-    }
-    console.time("pipeline time");
-    // Build frames
-    const framesPromise = [];
-    for (let src of monitoring) {
-        framesPromise.push(new Promise((resolve,reject) => {
-            getFrame(VIDS[src.id], 640, 480)
-                .then(res => resolve({ src: src, frame: res }))
-                .catch(err => {
-                    console.log(err);
-                    resolve(null);
-                })
-        }))
-    }
-    // Request frames
-    Promise.all(framesPromise)
-        .then(responses => {
-            // Request poses
-            const posePromises = [];
-            for (let res of responses) {
-                if (res == null) continue;
-                posePromises.push(new Promise((resolve) => {
-                    requestPose(res.frame)
-                        .catch(err => {
-                            console.error(err)
-                            resolve(null)
-                        })
-                        .then(det => {
-                            det.src = res.src;
-                            resolve(det);
-                        })
-                }))
-            }
-            Promise.all(posePromises)
-                .catch(err => console.error(err))
-                .then(dets => {
-                    const len = dets.length;
-                    // Draw each box and keypoints
-                    for (let det of dets) {
-                        if (det.status != "ok") continue;
-                        // Draw pose
-                        const keyp = drawPose(det.detections, det.src);
-                        // Check for collisions
-                        checkCollision(det.src.fnc, keyp, det.src);
-                    }
-                    console.timeEnd("pipeline time");
-                    requestAnimationFrame(pipeline);
-                })
-        })
-        .catch(err => console.error(err));
-}
-
-
-/**
- * Performs pose detection on the backend
- * @param {blob} frame Current video frame 
- * @returns 
- */
-const requestPose = async (frame) => {
-    if (!frame) return;
-    // Build form
-    const form = new FormData();
-    form.append("image", frame);
-    form.append("normalized", true);
-    // Send request
-    const request = await fetch("/vision/pose", {
-            method: "POST",
-            body: form
-        })
-    // Process response
-    const response = await request.json();
-    return response;
-}
-
-
-/**
- * Check for collisions between the user with his respective fence
- * @param {object} fence User fence
- * @param {object} pose User pose
- * @param {object} src Video source object
- * @returns 
- */
-const checkCollision = (fence, pose, src) => {
-    if (!fence || !pose || !src.alert) return;
-    // Search alert
-    const alrt = ALERTS.find(al => al.name == src.alert);
-    if (!alrt) return;
-    // Filter keypoints outside visible area
-    const kpFiltered = pose.filter(kp => kp.x < 1 && kp.y < 1);
-    // Retrieve fence bbox
-    const [minx , maxx, miny, maxy] = fence.bbox;
-    // check for collision
-    let collisions = 0;
-    for (let kp of kpFiltered) {
-        if (
-            kp.x < minx ||
-            kp.x > maxx ||
-            kp.y < miny ||
-            kp.y > maxy
-        ){
-            if (collisions >= 1) break;
-            collisions++;
-        }
-    }
-    if (collisions >= 1) processAlert(alrt, src);
-}
-
-
-/* *********************************************************************************
-********************************** ALERTS STUFF ************************************
-***********************************************************************************/
-
-/**
- * Show alerts modal
- */
-const alertRequest = () => {
-    $alertsModal.showModal();
-}
-
-
-/**
- * Render available fences in the menu
- */
-const feedAlerts = () => {
-    $activeAlerts.innerHTML = "";
-    for (let alrt of ALERTS) {
-        const name = alrt.name;
-        // Parent list element
-        const li = document.createElement("li");
-        // Device label
-        const span = document.createElement("span");
-        span.innerHTML = `${name}<br><strong>${alrt.type}</strong>`;
-        span.setAttribute("target-id", name);
-        li.appendChild(span);
-        // Delete button
-        const delBtn = document.createElement("button");
-        delBtn.setAttribute("target-id", name);
-        delBtn.addEventListener("click", e => {
-            serverRemoveAlert(e.target.getAttribute("target-id"), res => alert(res.message));
-        });
-        li.appendChild(delBtn);
-        $activeAlerts.appendChild(li);
-    }
-}
-
-const processNewAlert = async (e) => {
-    // Retrieve type
-    const type = $alertType.value;
-    // Retrieve id
-    const id = $alertId.value;
-    // Retrieve recipient
-    const recipient = $alertRecipient.value;
-    // Retrieve subject
-    const subject = $alertSubject.value;
-    // Retrieve content
-    const content = $alertContent.value;
-    if (!type || type == "") return alert("You should select a type of alert.");
-    if (content == "") return alert("Theres no content for the alert.");
-    if (!content.includes("[fence]")) return alert("You should include [fence] placeholder in your content.");
-    if (recipient == "") return alert(`Recipient field can't be empty. You should put your ${type == "mail" ? "comma separated emails": type == "telegram" ? "Telegram chat_id": "Lang code (es, en ...)"} here.`);
-
-    let alrt;
-    switch (type) {
-        case "local":
-            alrt = { type, content, id: null };
-            break;
-        default:
-            if (id == "") return alert(`Id field can't be empty. You should put your ${type == "mail" ? "AppScript Id": "Telegram BotToken"} here.`);
-            if (recipient == "") return alert(`Recipient field can't be empty. You should put your ${type == "mail" ? "comma separated emails": "Telegram chat_id"} here.`);
-            if (subject == "") return alert(`Subject field can't be empty.`);
-            alrt = { type, id, recipient, subject, content, id: null};
-            break;
-    }
-    let name;
-    while (true) {
-        name = prompt("Please provide an unique name for this alert: ");
-        if(name != "") {
-            // Validate another alert with this name
-            const alrtNamed = ALERTS.find(al => al.name == name);
-            if (alrtNamed) {
-                alert("This alert name is already taken.");
-                continue;
-            }
-            // Save alert
-            serverUpdateAlert(
-                name, 
-                { id, name, type, recipient, content, subject},
-                res => {
-                    alert(res.message);
-                    console.log(res);
-                    if (res.status == "ok"){
-                        ALERTS = Object.values(res.data);
-                        feedAlerts();
-                    }
-                }
-            );
-            break;
-        } else {
-            break;
-        }
-    }
-}
-
-let isSpeaking = false;
-const processAlert = (alert, src) => {
-    const currTime = new Date().getTime();
-    // 60 seconds timeout
-    if (src.timeout && currTime - src.timeout < 60000) return;
-    src.timeout = currTime;
-
-    // Retrieve fence name
-    const name = src.fence;
-    // Customize alert
-    const content = alert.content.replace("[fence]", name);
-    // Process type of alert
-    switch(alert.type){
-        case "local":
-            if (isSpeaking) return;
-            isSpeaking = true;
-            // Speech synthesis
-            const utt = new SpeechSynthesisUtterance(content);
-            // Customize speech synthesis
-            utt.lang = alert.recipient;
-            utt.rate = 1.1;
-            // Reset speech status
-            utt.onend = e => setTimeout(() => {
-                isSpeaking = false;
-            }, 1500);
-            // Request synthesis
-            speechSynthesis.speak(utt);
-            break;
-        
-        case "mail":
-            // Retrieve base64 image
-            getFrame(VIDS[src.id], 1280, 960, true)
-                .then(frame => {
-                    let attachment = [{ name: "evidence.jpg", contentType: "image/jpeg", base64: frame.split(",")[1] }];
-                    // Request email send
-                    sendViaGmail(alert.id, alert.recipient, alert.subject, content, attachment);
-                });
-            break;
-        
-        case "telegram":
-            // Retrieve blob image
-            getFrame(VIDS[src.id], 1280, 960, false)
-                .then(frame => {
-                    // Request message send
-                    sendViaTelegram(alert.id, alert.recipient, alert.subject, content, frame);
-                })
-            break;
-    }
-}
-
 /* *********************************************************************************
 ********************************** SETUP STUFF *************************************
 ***********************************************************************************/
@@ -880,7 +792,6 @@ const processAlert = (alert, src) => {
  * Initial setup
  */
 const setUp = async () => {
-    // Validate token or logout
     // Get video sources
     navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
         // Release video source after permissions
@@ -927,68 +838,71 @@ const setUp = async () => {
 
     // Add modal accept event
     $sourceAccept.addEventListener("click", e => {
-        // Find source video
-        const current = [...availableVideoSources].find(val => val.id == currentModalSource);
-        // Add video source to current active sources
-        current.fence = null;
-        current.monitoring = false;
-        current.hidden = false;
-        updateActiveSrc("add", current);
-        // Close modal
-        $sourcesModal.close();
-        if (PREVIEW_STREAM) PREVIEW_STREAM.getTracks().forEach(track => track.stop());
-        PREVIEW_STREAM = undefined;
-        // Re render
-        feedSources();
+        // Retrieve name
+        let name = $sourceName.value;
+        // Retrieve alert channel
+        const alrt = $sourceAlerts.value;
+        // Retrieve video source
+        const videoSrc = $sourceList.value;
+        // Validate data
+        if (videoSrc == "null") return alert("Please select a video source first.");
+        if (!name) return alert("Please assign an unique name to your video source");
+        if (alrt == "null") alert("Source will be saved but not monitored because there's not an alert channel selected.");
+        if (CURRENT_BBX == undefined) alert("Source will be saved but not monitored because there's not a fence.");
+        
+        // Validate if the source exists
+        const srcExists = activeSourcesList.find(src => src.name == name);
+
+        // Advertise the user for overwriting existing sources
+        if (srcExists) {
+            while (true) {
+                // Confirm an overwrite
+                let cnfrm = confirm(`The provided name "${srcExists.name}" already exists. Do you wanna override this?`);
+                if (cnfrm) break;
+                else {
+                    // Ask a new name if the user don't wanna override
+                    while (true) {
+                        let newName = prompt("Please provide the new name for this source: ");
+                        // Validate another source with the new name
+                        const newSrcExists = activeSourcesList.find(src => src.name == newName);
+                        if (newSrcExists) alert("This name also exists.");
+                        else {
+                            name = newName;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        } 
+
+        // Permorm update
+        serverUpdateSource(
+            name, 
+            {
+                name, id: videoSrc,
+                bbox: CURRENT_BBX ? [...CURRENT_BBX]: null, monitoring: false, hidden: false, alert: alrt
+            },
+            res => {
+                activeSourcesList = Object.values(res.data);
+                alert(res.message);
+                CURRENT_BBX = undefined;
+                $sourcesModal.close();
+                feedSources();
+            }
+        );
     })
 
-    // Search fence button
-    $geofenceToggle.addEventListener("click", geoToggle);
-    $fenceCancel.addEventListener("click", e => $fencesModal.close());
-    $fenceAccept.addEventListener("click", e => {
-        const id = e.target.getAttribute("target-id");
-        const fence = $setFencesList.value;
-        const alrt = $setAlertsList.value;
-        if (!id || !fence || !alrt){
-            $fencesModal.close();
-            return alert("Something went wrong while trying to update fence");
-        } 
-        // Update source
-        updateActiveSrc("update", { fence, alert: alrt }, id);
-        // Find fence and update on server
-        const fenceObj = [...FENCES].find(fen => fen.name == fence);
-        fenceObj.id = id;
-        serverUpdateFence(fence, fenceObj, res => {
-            alert(res.message);
-            FENCES = Object.values(res.data);
-            feedFences();
-        });
-        $fencesModal.close();
+    // Retrieve sources from server
+    serverLoadSources(res => {
+        activeSourcesList = Object.values(res);
+        feedSources();
     });
-
-    // Retrieve session storage active sources
-    const sources = await sessionStorage.getItem(KEY_ACTIVE_SRC);
-    if (sources) {
-        try {
-            const json = JSON.parse(sources);
-            if(!json) return;
-            activeSourcesList = [...json];
-            feedSources();
-        } catch (err) {
-            console.error("Failed to load active src config from session storage due to:", err)
-        }
-    }
 
     // Add alerts event listener
     $addAlert.addEventListener("click", alertRequest);
     $alertAccept.addEventListener("click", processNewAlert);
     $alertCancel.addEventListener("click", e => $alertsModal.close());
-
-    // Retrieve fences from server
-    serverLoadFences(fencs => {
-        FENCES = Object.values(fencs);
-        feedFences();
-    });
 
     // Retrieve alerts from server
     serverLoadAlerts(alrts => {
@@ -1003,3 +917,6 @@ const setUp = async () => {
 
 
 setUp();
+
+
+$preview.addEventListener("click", findGeofence);

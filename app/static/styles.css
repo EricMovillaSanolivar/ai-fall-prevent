@@ -160,6 +160,7 @@ main {
         padding: .5em;
         border-radius: 1em;
         cursor: default;
+        min-width: 22ch;
 
         &.deactivated {
             background-color: red;
@@ -174,7 +175,8 @@ main {
                 margin: 0;
                 position: absolute;
                 bottom: -1.5em;
-                left: .5lh;
+                right: -5ch;
+                text-wrap: nowrap;
             }
         }
 
@@ -234,10 +236,29 @@ dialog {
         }
     }
 
-    & video {
-        background-color: black;
-        max-width: 320px;
+    & .videoWrapper {
+        aspect-ratio: 4/3;
+        width: 320px;
+        position: relative;
+
+        & > video {
+            aspect-ratio: 4/3;
+            background-color: black;
+            width: 100%;
+            cursor: crosshair;
+            
+            & + canvas {
+                width: 100%;
+                position: absolute;
+                top: 0;
+                left: 0;
+                aspect-ratio: 4/3;
+                pointer-events: none;
+            }
+        }
     }
+
+    
 }
 
 #alertsModal > section {

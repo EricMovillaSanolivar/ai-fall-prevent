@@ -9,7 +9,7 @@
 <body>
     <main>
         <aside>
-            <details>
+            <details open>
                 <summary>Video Sources</summary>
                 <li>
                     <button id="addSource">+ Add source</button>
@@ -18,17 +18,9 @@
                 </ul>
             </details>
             <details>
-                <summary>Geofences</summary>
-                <li>
-                    <button id="geofenceToggle">Search</button>
-                </li>
-                <ul id="fences">
-                </ul>
-            </details>
-            <details>
                 <summary>Alerts</summary>
                 <li>
-                    <button id="addAlert">+ Add alert</button>
+                    <button id="addAlert">+ Add channel</button>
                 </li>
                 <ul id="alerts">
                 </ul>
@@ -42,24 +34,29 @@
         <h3>Please select a video source to add</h3>
         <section>
                 <div>
-                    <select id="sourceList"></select>
+                    <div>
+                        <label for="sourceName">Name</label><br>
+                        <input type="text" id="sourceName" placeholder="Name your video source...">
+                    </div>
+                    <br>
+                    <div>
+                        <label for="sourceList">Video source</label><br>
+                        <select id="sourceList"></select>
+                    </div>
+                    <br>
+                    <div>
+                        <label for="sourceAlerts">Alert channel</label><br>
+                        <select id="sourceAlerts"></select>
+                    </div>
+                    <br>
+                    <div>
+                        <strong>Click on the preview to search a fence.</strong>
+                    </div>
                 </div>
-            <video></video>
-            <div>
-                <button class="cancel">Cancel</button>
-                <button class="accept">Accept</button>
-            </div>
-        </section>
-    </dialog>
-    <dialog id="fencesModal">
-        <h3>Please select a fence and alert for <span id="fenceTarget">Camera</span></h3>
-        <section>
-            <div>
-                <select id="setFencesList"></select>
-            </div>
-            <div>
-                <select id="setAlertsList"></select>
-            </div>
+                <div class="videoWrapper">
+                    <video></video>
+                    <canvas></canvas>
+                </div>
             <div>
                 <button class="cancel">Cancel</button>
                 <button class="accept">Accept</button>
@@ -67,7 +64,7 @@
         </section>
     </dialog>
     <dialog id="alertsModal">
-        <h3>Please follow the steps to create a new alert</h3>
+        <h3>Please follow the steps to create a new alert channel</h3>
         <section>
             <div>
                 <select id="alertType">

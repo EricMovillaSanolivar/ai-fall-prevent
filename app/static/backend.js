@@ -74,49 +74,49 @@ const sendViaTelegram = (id, chat, subject, content, attachment) => {
 
 
 /******************************************************************************************** *
- * ********************************** FENCES STUFF ****************************************** *
+ * ********************************** SOURCES STUFF ***************************************** *
  * *******************************************************************************************/
 /**
- * Load fences from server
+ * Load sources from server
  * @param {function} callback Function to execute when a response is received. 
  */
-const serverLoadFences = (callback) => {
-    fetch("/fences/load")
+const serverLoadSources = (callback) => {
+    fetch("/sources/load")
         .then(req => req.json())
         .then(res => {
-            if (res.error) console.error(`Error loading fences from server due to: ${res.error}`);
+            if (res.error) console.error(`Error loading sources from server due to: ${res.error}`);
             if (callback && typeof(callback) == "function") callback(res.data);
             return res.data;
-        })
+        });
 }
 
 /**
- * Update fence on server
- * @param {str} id Id or name of the fence
- * @param {object} fence Fence data in format: { name: "some_name", id: "source id", "bbox": [x1,y1,x2,y2] } 
+ * Update source on server
+ * @param {str} id Id or name of the source
+ * @param {object} source Fence data in format: { name: "some_name", id: "source id", "bbox": [x1,y1,x2,y2] } 
  * @param {function} callback Function to execute when a response is received. 
  */
-const serverUpdateFence = (id, fence, callback) => {
-    fetch("/fences/save", {
+const serverUpdateSource = (id, source, callback) => {
+    fetch("/sources/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: id, data: fence })
+            body: JSON.stringify({ id: id, data: source })
         })
         .then(req => req.json())
         .then(res => {
-            if (res.error) return alert(`Failed to save fence due to: ${res.error}`);
+            if (res.error) return alert(`Failed to save source due to: ${res.error}`);
             if (callback && typeof(callback) == "function") callback(res);
             return res;
         })
 }
 
 /**
- * Remove fence on server
- * @param {str} id Id or name of the fence
+ * Remove source on server
+ * @param {str} id Id or name of the source
  * @param {function} callback Function to execute when a response is received. 
  */
-const serverRemoveFence = (id, callback) => {
-    fetch("/fences/remove", {
+const serverRemoveSource = (id, callback) => {
+    fetch("/sources/remove", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: id })
@@ -192,9 +192,9 @@ const serverRemoveAlert = (id, callback) => {
 
 
 export {
-    serverLoadFences,
-    serverUpdateFence,
-    serverRemoveFence,
+    serverLoadSources,
+    serverUpdateSource,
+    serverRemoveSource,
     serverLoadAlerts,
     serverUpdateAlert,
     serverRemoveAlert,
