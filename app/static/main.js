@@ -280,9 +280,10 @@ const feedSources = () => {
         // Parent list element
         const li = document.createElement("li");
         li.className = src.monitoring ? "": "deactivated";
+        li.title = "Press left click to edit fence and alerts.";
         // Device label
         const span = document.createElement("span");
-        span.textContent = name;
+        span.innerHTML = `${name}<br/><strong>Alerts through: ${src.alert}</strong>`;
         span.setAttribute("target-id", src.id);
         span.addEventListener("click", toggleMonitoring);
         span.addEventListener("contextmenu", fenceRequest);
@@ -475,7 +476,7 @@ const drawBbox = (src) => {
     const { width, height } = OVERLAYS[src.id].canvas.getBoundingClientRect();
     // Draw a black overlay
     ctx.beginPath();
-    ctx.fillStyle = "#0005";
+    ctx.fillStyle = "#0003";
     ctx.rect(0, 0, width, height);
     ctx.fill();
     ctx.closePath();
@@ -603,7 +604,16 @@ const map = (val, smin, smax, tmin, tmax) => {
 
 const pipeline = () => {
     // Filter monitored sources
-    const monitoring = [...activeSourcesList].filter(src => src.monitoring == true);
+    const monitoring = [...activeSourcesList].filter(src => {
+        setTimeout(() => {
+            // Clear canvases
+            clearCanvas(src);
+            // Draw bbox
+            drawBbox(src);
+        }, 200);
+        // Filter monitored only
+        return src.monitoring;
+    });
     // Validate there are sources for monitoring
     if (monitoring.length == 0) {
         setTimeout(() => {
@@ -627,42 +637,38 @@ const pipeline = () => {
     // Request frames
     Promise.all(framesPromise)
         .then(responses => {
-                // Request poses
-                const posePromises = [];
-                for (let res of responses) {
-                    if (res == null) continue;
-                    posePromises.push(new Promise((resolve) => {
-                        requestPose(res.frame)
-                            .catch(err => {
-                                console.error(err)
-                                resolve(null)
-                            })
-                            .then(det => {
-                                det.src = res.src;
-                                resolve(det);
-                            })
-                    }))
-                }
-                Promise.all(posePromises)
-                    .catch(err => console.error(err))
-                    .then(dets => {
-                        // Clear all canvases
-                        for (let src of activeSourcesList) {
-                            clearCanvas(src);
-                        }
-                        // Draw each box and keypoints
-                        for (let det of dets) {
-                            // Draw fence
-                            const fence = drawBbox(det.src);
-                            // Draw pose
-                            const keyp = drawPose(det.detections, det.src);
-                            // Check for collisions
-                            checkCollision(fence, keyp, det.src);
-                        }
-                        console.timeEnd("pipeline time");
-                        requestAnimationFrame(pipeline);
-                    })
-            })
+            // Request poses
+            const posePromises = [];
+            for (let res of responses) {
+                if (res == null) continue;
+                posePromises.push(new Promise((resolve) => {
+                    requestPose(res.frame)
+                        .catch(err => {
+                            console.error(err)
+                            resolve(null)
+                        })
+                        .then(det => {
+                            det.src = res.src;
+                            resolve(det);
+                        })
+                }))
+            }
+            Promise.all(posePromises)
+                .catch(err => console.error(err))
+                .then(dets => {
+                    const len = dets.length;
+                    // Draw each box and keypoints
+                    for (let det of dets) {
+                        if (det.status != "ok") continue;
+                        // Draw pose
+                        const keyp = drawPose(det.detections, det.src);
+                        // Check for collisions
+                        checkCollision(det.src.fnc, keyp, det.src);
+                    }
+                    console.timeEnd("pipeline time");
+                    requestAnimationFrame(pipeline);
+                })
+        })
         .catch(err => console.error(err));
 }
 
@@ -697,7 +703,6 @@ const requestPose = async (frame) => {
  * @returns 
  */
 const checkCollision = (fence, pose, src) => {
-    console.log(src)
     if (!fence || !pose || !src.alert) return;
     // Search alert
     const alrt = ALERTS.find(al => al.name == src.alert);
@@ -722,6 +727,14 @@ const checkCollision = (fence, pose, src) => {
     if (collisions >= 1) processAlert(alrt, src);
 }
 
+
+/* *********************************************************************************
+********************************** ALERTS STUFF ************************************
+***********************************************************************************/
+
+/**
+ * Show alerts modal
+ */
 const alertRequest = () => {
     $alertsModal.showModal();
 }
@@ -738,21 +751,18 @@ const feedAlerts = () => {
         const li = document.createElement("li");
         // Device label
         const span = document.createElement("span");
-        span.textContent = name;
+        span.innerHTML = `${name}<br><strong>${alrt.type}</strong>`;
         span.setAttribute("target-id", name);
-        // span.addEventListener("click", toggleMonitoring);
         li.appendChild(span);
         // Delete button
         const delBtn = document.createElement("button");
         delBtn.setAttribute("target-id", name);
-        delBtn.addEventListener("click", removeAlert);
+        delBtn.addEventListener("click", e => {
+            serverRemoveAlert(e.target.getAttribute("target-id"), res => alert(res.message));
+        });
         li.appendChild(delBtn);
         $activeAlerts.appendChild(li);
     }
-}
-
-const removeAlert = () => {
-
 }
 
 const processNewAlert = async (e) => {
@@ -786,8 +796,27 @@ const processNewAlert = async (e) => {
     let name;
     while (true) {
         name = prompt("Please provide an unique name for this alert: ");
-        if(name) {
-
+        if(name != "") {
+            // Validate another alert with this name
+            const alrtNamed = ALERTS.find(al => al.name == name);
+            if (alrtNamed) {
+                alert("This alert name is already taken.");
+                continue;
+            }
+            // Save alert
+            serverUpdateAlert(
+                name, 
+                { id, name, type, recipient, content, subject},
+                res => {
+                    alert(res.message);
+                    console.log(res);
+                    if (res.status == "ok"){
+                        ALERTS = Object.values(res.data);
+                        feedAlerts();
+                    }
+                }
+            );
+            break;
         } else {
             break;
         }
@@ -843,7 +872,6 @@ const processAlert = (alert, src) => {
             break;
     }
 }
-
 
 /* *********************************************************************************
 ********************************** SETUP STUFF *************************************

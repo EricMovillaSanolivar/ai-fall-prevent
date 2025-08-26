@@ -1,1 +1,26 @@
-{}
+{
+  "testalert": {
+    "name": "test",
+    "type": "mail",
+    "recipient": "test2",
+    "content": "test message [fence]",
+    "subject": "test subject",
+    "id": "test"
+  },
+  "fraktlabs": {
+    "name": "fraktlabs",
+    "type": "mail",
+    "recipient": "fraktlabs@gmail.com",
+    "content": "The user on [fence] can suffer a fall. Please check the cameras.",
+    "subject": "Possible fall alert",
+    "id": "AKfycbwNZC5uY3dbWykvGZBlguxayu4NXfLq5kf239sM6BzQsYLqaRYp39NigDBmihUbSR1S9w"
+  },
+  "telegram": {
+    "id": "bot8097582312:AAFsddkHuhq-gv4y1IkO7_lnnO1i69Ym43E",
+    "name": "telegram",
+    "type": "telegram",
+    "recipient": "-4859198114",
+    "content": "The user on [fence] can suffer a fall. Please check the cameras.",
+    "subject": "Possible fall alert"
+  }
+}

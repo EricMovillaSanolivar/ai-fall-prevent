@@ -166,6 +166,18 @@ main {
             color: white;
         }
 
+        & span {
+            & strong {
+                pointer-events: none;
+                font-size: 10px;
+                padding: 0;
+                margin: 0;
+                position: absolute;
+                bottom: -1.5em;
+                left: .5lh;
+            }
+        }
+
         & button {
             appearance: none;
             aspect-ratio: 1/1;
