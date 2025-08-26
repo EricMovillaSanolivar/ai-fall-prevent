@@ -15,6 +15,7 @@
  * @param {object} attachments Base64 attachments in format: [{name: "name_of_attachment.jpg", contentType: "image/jpeg", base64: "without header"}]
  */
 const sendViaGmail = (id, emails, subject, content, attachments) => {
+    console.log("Sending via email.")
     return new Promise((resolve, reject) => {
         fetch("/alerts/mail", {
                 method: "POST",
@@ -50,6 +51,7 @@ const sendViaGmail = (id, emails, subject, content, attachments) => {
  * @param {object} attachment Blob image
  */
 const sendViaTelegram = (id, chat, subject, content, attachment) => {
+    console.log("Sending via telegram.")
     // Build from
     const form = new FormData();
     form.append("id", id);

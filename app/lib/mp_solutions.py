@@ -29,12 +29,16 @@ class MPipe:
             self.debug = debug
             if debug:
                 print("Loading Bodypose model...")
-            bpmodel_path = python.BaseOptions(model_asset_path='./models/pose_landmarker.task', delegate=delegate)
+            bpmodel_path = python.BaseOptions(model_asset_path='./models/pose_landmarker.task'
+                # , delegate=delegate # only on linux
+                )
             bpoptions = vision.PoseLandmarkerOptions(base_options=bpmodel_path, num_poses=10, output_segmentation_masks=True)
             self.bodypose_detector = vision.PoseLandmarker.create_from_options(bpoptions)
             if debug:
                 print("Cargando modelo MagicTouch (Interactive Segmenter)...")
-            imodel = python.BaseOptions(model_asset_path='./models/magic_touch.tflite', delegate=delegate)
+            imodel = python.BaseOptions(model_asset_path='./models/magic_touch.tflite'
+                # , delegate=delegate # only on linux
+                )
             ioptions = vision.InteractiveSegmenterOptions(
                 base_options=imodel,
                 output_category_mask=True,

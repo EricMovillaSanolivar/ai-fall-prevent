@@ -3,12 +3,10 @@ import cv2
 import time
 import pygame
 import threading
-from mp_solutions import MPipe
-from efficient_tracker import EfficientTracker
+from lib.mp_solutions import MPipe
 
 # Engine instances
-tracker = EfficientTracker(timeout=100)
-mp = MPipe(debug=True, gpu=True)
+mp = MPipe(debug=True)
 
 playing = False
 
@@ -54,6 +52,7 @@ gy2 = round((gy1 + (height*cheight)))
 green = (0,255,0)
 blue = (255,0,0)
 red = (0,0,255)
+print("done")
 
 # Main loop
 while True:
@@ -115,14 +114,14 @@ while True:
                 
         if lw is not None and le is not None:
             if lw < le:
-                threading.Thread(target=play, args=("./attention.mp3",), daemon=False).start()
+                threading.Thread(target=play, args=("./static/assets/attention.mp3",), daemon=False).start()
         if rw is not None and re is not None:
             if rw < re:
-                threading.Thread(target=play, args=("./attention.mp3",), daemon=False).start()
+                threading.Thread(target=play, args=("./static/assets/attention.mp3",), daemon=False).start()
                 
                 
         if risk:
-            threading.Thread(target=play, args=("./warn.mp3",), daemon=False).start()
+            threading.Thread(target=play, args=("./static/assets/warn.mp3",), daemon=False).start()
             
         # Show frame in a window
         cv2.imshow("CamMonitor", frame)

@@ -502,7 +502,7 @@ def send_tg():
         upstream = requests.post( TG_URL, data=tg_form, files=files, timeout=15)
         try:
             data = upstream.json()
-            return success(json.dumps(data))
+            return success(data)
         except ValueError:
             # Not JSON; return plaintext so you can inspect the upstream body.
             return success({ "response": upstream.text })
@@ -516,4 +516,4 @@ def send_tg():
     
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    app.run(host="0.0.0.0", port=8080, debug=True)  

@@ -176,6 +176,11 @@ const fenceRequest = (ev) => {
     FENCES.forEach(fence => {
         $setFencesList.innerHTML += `<option value="${fence.name}">${fence.name}</option>`;
     });
+    // Clear and re-feed source list
+    $setAlertsList.innerHTML = "<option hidden>Select...</option>";
+    ALERTS.forEach(alert => {
+        $setAlertsList.innerHTML += `<option value="${alert.name}">${alert.name}</option>`;
+    });
     // add id to accept button
     $fenceAccept.setAttribute("target-id", src.id);
 }
@@ -692,12 +697,17 @@ const requestPose = async (frame) => {
  * @returns 
  */
 const checkCollision = (fence, pose, src) => {
+    console.log(src)
     if (!fence || !pose || !src.alert) return;
+    // Search alert
+    const alrt = ALERTS.find(al => al.name == src.alert);
+    if (!alrt) return;
     // Filter keypoints outside visible area
     const kpFiltered = pose.filter(kp => kp.x < 1 && kp.y < 1);
     // Retrieve fence bbox
     const [minx , maxx, miny, maxy] = fence.bbox;
     // check for collision
+    let collisions = 0;
     for (let kp of kpFiltered) {
         if (
             kp.x < minx ||
@@ -705,17 +715,11 @@ const checkCollision = (fence, pose, src) => {
             kp.y < miny ||
             kp.y > maxy
         ){
-            // Search alert
-            // Retrieve image
-            getFrame(VIDS[src.id], 1280, 720, true)
-                .then(img => {
-                    // Process alert
-                    
-                    testAlert(`The user on the fence: '${src.fence}', is under high fall risk.`, [{name: "evicende.jpg", contentType: "image/jpeg", base64: img.split(",")[1]}]);
-                });
-            break;
+            if (collisions >= 1) break;
+            collisions++;
         }
     }
+    if (collisions >= 1) processAlert(alrt, src);
 }
 
 const alertRequest = () => {
@@ -790,27 +794,15 @@ const processNewAlert = async (e) => {
     }
 }
 
-// let speaking = false;
-const testAlert = (content, images) => {
-    if(speaking) return;
-    speaking = true;
-    const utt = new SpeechSynthesisUtterance(content);
-    utt.onend = e => setTimeout(() => {
-        speaking = false;
-    }, 2000);
-    utt.lang = "en";
-    utt.rate = 1.2;
-    speechSynthesis.speak(utt);
-    sendViaGmail(null, "fraktlabs@gmail.com", "Possible fall alert!!", content, images)
-        .then(res => console.log(res))
-        .catch(err => {
-            console.error(err);
-        });
-}
-
-
 let isSpeaking = false;
-const processAlert = (alert, name, attachment) => {
+const processAlert = (alert, src) => {
+    const currTime = new Date().getTime();
+    // 60 seconds timeout
+    if (src.timeout && currTime - src.timeout < 60000) return;
+    src.timeout = currTime;
+
+    // Retrieve fence name
+    const name = src.fence;
     // Customize alert
     const content = alert.content.replace("[fence]", name);
     // Process type of alert
@@ -832,16 +824,22 @@ const processAlert = (alert, name, attachment) => {
             break;
         
         case "mail":
-            // Request email send
-            sendViaGmail(alert.id, alert.recipient, alert.subject, content, attachment);
+            // Retrieve base64 image
+            getFrame(VIDS[src.id], 1280, 960, true)
+                .then(frame => {
+                    let attachment = [{ name: "evidence.jpg", contentType: "image/jpeg", base64: frame.split(",")[1] }];
+                    // Request email send
+                    sendViaGmail(alert.id, alert.recipient, alert.subject, content, attachment);
+                });
             break;
         
         case "telegram":
-            // Customize alert
-            content = alert.content.replace("<user>", name);
-            // Request email send
-            sendViaGmail(alert.id, alert.recipient, alert.subject, content, attachment);
-            // Request message send
+            // Retrieve blob image
+            getFrame(VIDS[src.id], 1280, 960, false)
+                .then(frame => {
+                    // Request message send
+                    sendViaTelegram(alert.id, alert.recipient, alert.subject, content, frame);
+                })
             break;
     }
 }
@@ -922,12 +920,13 @@ const setUp = async () => {
     $fenceAccept.addEventListener("click", e => {
         const id = e.target.getAttribute("target-id");
         const fence = $setFencesList.value;
-        if (!id || !fence){
+        const alrt = $setAlertsList.value;
+        if (!id || !fence || !alrt){
             $fencesModal.close();
             return alert("Something went wrong while trying to update fence");
         } 
         // Update source
-        updateActiveSrc("update", { fence: fence }, id);
+        updateActiveSrc("update", { fence, alert: alrt }, id);
         // Find fence and update on server
         const fenceObj = [...FENCES].find(fen => fen.name == fence);
         fenceObj.id = id;
@@ -968,6 +967,10 @@ const setUp = async () => {
         ALERTS = Object.values(alrts);
         feedAlerts();
     });
+
+    setTimeout(() => {
+        pipeline();
+    }, 4000);
 }
 
 

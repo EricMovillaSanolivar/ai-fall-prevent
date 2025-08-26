@@ -1,1 +1,18 @@
-{}
+{
+    "fraktlabs": {
+        "name": "fraktlabs",
+        "type": "mail",
+        "id": "AKfycbwNZC5uY3dbWykvGZBlguxayu4NXfLq5kf239sM6BzQsYLqaRYp39NigDBmihUbSR1S9w",
+        "recipient": "fraktlabs@gmail.com",
+        "subject": "Possible fall alert",
+        "content": "The user on [fence] can suffer a fall. Please check the cameras."
+    },
+    "telegram" : {
+        "name": "telegram",
+        "type": "telegram",
+        "id": "bot8097582312:AAFsddkHuhq-gv4y1IkO7_lnnO1i69Ym43E",
+        "recipient": "-4859198114",
+        "subject": "Possible fall alert",
+        "content": "The user on [fence] can suffer a fall. Please check the cameras."
+    }
+}
