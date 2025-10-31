@@ -559,18 +559,13 @@ const processAlert = (alert, src) => {
 
 const pipeline = () => {
     // Filter monitored sources
-    const monitoring = [...activeSourcesList].filter(src => {
-        setTimeout(() => {
-            // Clear canvases
-            clearCanvas(src);
-            // Draw bbox
-            drawBbox(src);
-        }, 200);
-        // Filter monitored only
-        return src.monitoring;
-    });
+    const monitoring = [...activeSourcesList].filter(src => src.monitoring);
     // Validate there are sources for monitoring
     if (monitoring.length == 0) {
+        for (let src of activeSourcesList) {
+            clearCanvas(src);
+            drawBbox(src);
+        }
         setTimeout(() => {
             requestAnimationFrame(pipeline);
         }, 100);
@@ -611,6 +606,10 @@ const pipeline = () => {
             Promise.all(posePromises)
                 .catch(err => console.error(err))
                 .then(dets => {
+                    for (let src of activeSourcesList) {
+                        clearCanvas(src);
+                        drawBbox(src);
+                    }
                     // Draw each box and keypoints
                     for (let det of dets) {
                         if (det.status != "ok") continue;

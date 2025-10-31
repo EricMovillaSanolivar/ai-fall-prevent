@@ -6,18 +6,21 @@ from flask_cors import CORS
 from lib.mp_solutions import MPipe
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 
-
 # Flask app instance
 app = Flask(__name__)
 # Enable cors origin for all paths
 CORS(app)
 
-mp = MPipe(debug=True)
+NUM_INSTANCES = os.getenv("MAX_SOURCES") or 9
+# Requires linux
+USE_GPU = os.getenv("USE_GPU") or False
+
+mp = MPipe(USE_GPU, NUM_INSTANCES, debug=True)
 
 # Retrieve entironment variables
 MASTER_USER = os.getenv("MASTER_USER") or "admin"
 MASTER_PASS = os.getenv("MASTER_PASS") or "admin"
-TOKEN = os.getenv("TKN") or "snlrdevops"
+TOKEN = os.getenv("TKN") or "ada9s8msad098a"
     
 # ----------------------------------------
 # --------------- ALERTS R/W STUFF -------
@@ -511,9 +514,6 @@ def send_tg():
         return server_error(f"Telegram send error: {str(err)}")
 # --------------------------------------------------------------------
 # --------------------------------------------------------------------
-    
-
-    
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)  
+    app.run(host="0.0.0.0", port=8080)

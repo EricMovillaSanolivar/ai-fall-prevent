@@ -1,5 +1,6 @@
 import os
 import cv2
+import time
 import base64
 import numpy as np
 import mediapipe as mp
@@ -8,12 +9,9 @@ from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.components import containers
 import torch
 
-# # Audio data for sound classifications
-# AudioData = mp.tasks.components.containers.AudioData
-
 class MPipe:
     # Constructor
-    def __init__(self, debug=False):
+    def __init__(self, gpu, instances, debug=False):
         """
         Create a mediapipe solutions instance
         ---
@@ -24,27 +22,42 @@ class MPipe:
             gpu (bool, optional): Load models into gpu. Defaults to False.
         """
         try:
-            gpu_available = torch.cuda.is_available()
-            delegate = delegate=python.BaseOptions.Delegate.GPU if gpu_available else python.BaseOptions.Delegate.CPU
             self.debug = debug
+            # Handle GPU Usage
+            delegate = python.BaseOptions.Delegate.CPU
+            if gpu:
+                gpu_available = torch.cuda.is_available()
+                delegate = python.BaseOptions.Delegate.GPU if gpu_available else python.BaseOptions.Delegate.CPU
+                if debug:
+                    print(f"Using device: {delegate}")
+                    
+            # Init body pose models
             if debug:
                 print("Loading Bodypose model...")
             bpmodel_path = python.BaseOptions(model_asset_path='./models/pose_landmarker.task'
-                # , delegate=delegate # only on linux
+                , delegate=delegate # only on linux
                 )
             bpoptions = vision.PoseLandmarkerOptions(base_options=bpmodel_path, num_poses=10, output_segmentation_masks=True)
-            self.bodypose_detector = vision.PoseLandmarker.create_from_options(bpoptions)
+            self.detectors = []
+            for i in range(instances):
+                self.detectors.append({ "model": vision.PoseLandmarker.create_from_options(bpoptions), "bussy": False })
+            # self.bodypose_detector = vision.PoseLandmarker.create_from_options(bpoptions)
+            
+            # Init segmentation models
             if debug:
                 print("Cargando modelo MagicTouch (Interactive Segmenter)...")
             imodel = python.BaseOptions(model_asset_path='./models/magic_touch.tflite'
-                # , delegate=delegate # only on linux
+                , delegate=delegate # only on linux
                 )
             ioptions = vision.InteractiveSegmenterOptions(
                 base_options=imodel,
                 output_category_mask=True,
                 output_confidence_masks=True
             )
-            self.interactive_segmenter = vision.InteractiveSegmenter.create_from_options(ioptions)
+            self.segmentators = []
+            for i in range(instances):
+                self.segmentators.append({ "model": vision.InteractiveSegmenter.create_from_options(ioptions), "bussy": False })
+            # self.interactive_segmenter = vision.InteractiveSegmenter.create_from_options(ioptions)
             if debug:
                 print("Start engine finished...")
         except Exception as err:
@@ -172,8 +185,18 @@ class MPipe:
             iw = decoded_img.width
             ih = decoded_img.height
             
+            # Find available detector
+            detector = next((det for det in self.detectors if not det["bussy"]), None)
+            
+            while not detector:
+                detector = next((det for det in self.detectors if not det["bussy"]), None)
+                if not detector:
+                    time.sleep(0.1)
+            
+            detector["bussy"] = True
+            
             # Request hand pose detection
-            bodypose_results = self.bodypose_detector.detect(decoded_img)
+            bodypose_results = detector["model"].detect(decoded_img)
             
             # Map detection results
             results = [
@@ -211,6 +234,9 @@ class MPipe:
             
         except Exception as err:
             raise ValueError(f"MP: Bodypose detection error: {err}")
+        finally:
+            if detector is not None:
+                detector["bussy"] = False
         
     def interactive_segmentation(self, image, touch_x: float, touch_y: float, normalized: bool = True):
         """
@@ -246,9 +272,19 @@ class MPipe:
                 format=RegionOfInterest.Format.KEYPOINT,
                 keypoint=NormalizedKeypoint(x=x, y=y)
             )
+            
+            # Find available segmentator
+            segmentator = next((det for det in self.segmentators if not det["bussy"]), None)
+            
+            while not segmentator:
+                segmentator = next((det for det in self.segmentators if not det["bussy"]), None)
+                if not segmentator:
+                    time.sleep(0.1)
+            
+            segmentator["bussy"] = True
 
             # Ejecutar segmentación
-            result = self.interactive_segmenter.segment(mp_img, roi)
+            result = segmentator["model"].segment(mp_img, roi)
 
             outputs = {}
             # category_mask: mp.Image con dtype uint8 (0/1)
@@ -261,3 +297,6 @@ class MPipe:
 
         except Exception as err:
             raise ValueError(f"MP: Error en segmentación interactiva: {err}")
+        finally:
+            if segmentator is not None:
+                segmentator["bussy"] = False
