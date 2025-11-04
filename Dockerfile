@@ -35,6 +35,7 @@ RUN python -m pip install --upgrade pip && python -m pip install --no-cache-dir 
 
 # Copy workspace
 COPY app/ /app/
+COPY ssl/ /ssl/
 WORKDIR /app/
 
 # Copy init script

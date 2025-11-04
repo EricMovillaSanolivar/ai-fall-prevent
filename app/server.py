@@ -11,9 +11,9 @@ app = Flask(__name__)
 # Enable cors origin for all paths
 CORS(app)
 
-NUM_INSTANCES = os.getenv("MAX_SOURCES") or 9
+NUM_INSTANCES = int(os.getenv("MAX_SOURCES", 9))
 # Requires linux
-USE_GPU = os.getenv("USE_GPU") or False
+USE_GPU = os.getenv("USE_GPU", "false").lower() == "true"
 
 mp = MPipe(USE_GPU, NUM_INSTANCES, debug=True)
 

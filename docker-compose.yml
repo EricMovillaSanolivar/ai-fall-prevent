@@ -8,6 +8,11 @@ services:
       - ./app/data:/app/data
     ports:
       - "8889:8889"
+    environment:
+      # Should use GPU
+      - USE_GPU=true
+      # Max number of video sources to handle
+      - MAX_SOURCES=9
     deploy:
       resources:
         reservations:
