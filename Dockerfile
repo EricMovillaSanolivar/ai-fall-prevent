@@ -6,7 +6,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install system dependencies for cuda
 RUN apt update -y && \
     apt install -y \
-    nvidia-smi \
     libgl1-mesa-glx \
     libglib2.0-0 \
     libnvidia-gl-525 \
