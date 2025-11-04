@@ -1,0 +1,17 @@
+services:
+  ai-fall:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-fall
+    volumes:
+      - ./app/data:/app/data
+    ports:
+      - "8889:8889"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
