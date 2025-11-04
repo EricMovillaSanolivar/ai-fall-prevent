@@ -7,6 +7,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update -y && \
     apt install -y \
     libgl1 \
+    gstreamer1.0-libav \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
     build-essential \
     cython3
     
