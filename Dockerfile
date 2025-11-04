@@ -6,7 +6,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install system dependencies for cuda
 RUN apt update -y && \
     apt install -y \
-    libgl1 \
+    nvidia-smi \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libnvidia-gl-525 \
+    libegl1 \
     gstreamer1.0-libav \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
