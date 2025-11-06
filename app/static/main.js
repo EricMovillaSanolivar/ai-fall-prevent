@@ -174,7 +174,7 @@ const updateFeed = async () => {
     $videoFeed.className = cls;
 
     for (let source of sources) {
-        const strm = STREAMS[source.id] ? STREAMS[source.id]: await navigator.mediaDevices.getUserMedia({ video: { deviceId: source.id } });
+        const strm = STREAMS[source.id] ? STREAMS[source.id]: await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exxact: source.id } } });
 
         // Create stream reference
         if(!STREAMS[source.id]) STREAMS[source.id] = strm;
@@ -819,7 +819,7 @@ const setUp = async () => {
 
     // Show preview listener
     $sourceList.addEventListener("change", e => {
-        navigator.mediaDevices.getUserMedia({ video: { deviceId: e.target.value } })
+        navigator.mediaDevices.getUserMedia({ video: { deviceId:{ exact: e.target.value }} })
             .then(stream => {
                 PREVIEW_STREAM = stream;
                 currentModalSource = e.target.value;
