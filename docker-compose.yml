@@ -10,7 +10,7 @@ services:
       - "8889:8889"
     environment:
       # Should use GPU
-      - USE_GPU=true
+      - USE_GPU=false
       # Max number of video sources to handle
       - MAX_SOURCES=9
     deploy:
