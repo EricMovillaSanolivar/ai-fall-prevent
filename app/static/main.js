@@ -174,7 +174,7 @@ const updateFeed = async () => {
     $videoFeed.className = cls;
 
     for (let source of sources) {
-        const strm = STREAMS[source.id] ? STREAMS[source.id]: await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exxact: source.id } } });
+        const strm = STREAMS[source.id] ? STREAMS[source.id]: await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: source.id } } });
 
         // Create stream reference
         if(!STREAMS[source.id]) STREAMS[source.id] = strm;
