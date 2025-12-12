@@ -444,11 +444,12 @@ const feedAlerts = () => {
         // Parent list element
         const li = document.createElement("li");
         
-        li.addEventListener("contextmenu", e => {
-            alertRequest(name);
-        });
         // Device label
         const span = document.createElement("span");
+        span.addEventListener("contextmenu", e => {
+            e.preventDefault();
+            alertRequest(e.target.getAttribute("target-id"));
+        });
         span.innerHTML = `${name}<strong>${alrt.type}</strong>`;
         span.setAttribute("target-id", name);
         li.appendChild(span);
