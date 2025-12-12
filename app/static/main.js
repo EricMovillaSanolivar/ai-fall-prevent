@@ -458,7 +458,10 @@ const feedAlerts = () => {
         const delBtn = document.createElement("button");
         delBtn.setAttribute("target-id", name);
         delBtn.addEventListener("click", e => {
-            serverRemoveAlert(e.target.getAttribute("target-id"), res => alert(res.message));
+            serverRemoveAlert(e.target.getAttribute("target-id"), res => {
+                alert(res.message);
+                feedAlerts();
+            });
         });
         li.appendChild(delBtn);
         $activeAlerts.appendChild(li);
@@ -514,6 +517,7 @@ const processNewAlert = async (e) => {
                     if (res.status == "ok"){
                         ALERTS = Object.values(res.data);
                         feedAlerts();
+                        $alertsModal.close();
                     }
                 }
             );
