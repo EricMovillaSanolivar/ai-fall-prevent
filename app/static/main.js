@@ -424,11 +424,11 @@ const alertRequest = (alertName) => {
         CURR_ALERT = ALERTS.find(al => al.name == alertName);
         if (!CURR_ALERT) return console.log("Alert channel not found.");
         // Populate form
-        $alertType.value = alrt.type;
-        $alertId.value = alrt.id;
-        $alertRecipient.value = alrt.recipient;
-        $alertSubject.value = alrt.subject;
-        $alertContent.value = alrt.content;
+        $alertType.value = CURR_ALERT.type;
+        $alertId.value = CURR_ALERT.id;
+        $alertRecipient.value = CURR_ALERT.recipient;
+        $alertSubject.value = CURR_ALERT.subject;
+        $alertContent.value = CURR_ALERT.content;
         $alertsModal.showModal();
     }
 }
