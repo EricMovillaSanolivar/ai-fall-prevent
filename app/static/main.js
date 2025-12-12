@@ -459,6 +459,7 @@ const feedAlerts = () => {
         delBtn.setAttribute("target-id", name);
         delBtn.addEventListener("click", e => {
             serverRemoveAlert(e.target.getAttribute("target-id"), res => {
+                ALERTS = Object.values(res.data);
                 alert(res.message);
                 feedAlerts();
             });
