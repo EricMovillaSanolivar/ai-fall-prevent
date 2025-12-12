@@ -406,12 +406,31 @@ const drawPose = (detections, src) => {
 /* *********************************************************************************
 ********************************** ALERTS STUFF ************************************
 ***********************************************************************************/
-
+let CURR_ALERT;
 /**
  * Show alerts modal
  */
-const alertRequest = () => {
-    $alertsModal.showModal();
+const alertRequest = (alertName) => {
+    if (!alertName) {
+        // Clear form
+        $alertType.value = "";
+        $alertId.value = "";
+        $alertRecipient.value = "";
+        $alertSubject.value = "";
+        $alertContent.value = "";
+        $alertsModal.showModal();
+    } else {
+        // Find alert
+        CURR_ALERT = ALERTS.find(al => al.name == alertName);
+        if (!CURR_ALERT) return console.log("Alert channel not found.");
+        // Populate form
+        $alertType.value = alrt.type;
+        $alertId.value = alrt.id;
+        $alertRecipient.value = alrt.recipient;
+        $alertSubject.value = alrt.subject;
+        $alertContent.value = alrt.content;
+        $alertsModal.showModal();
+    }
 }
 
 
@@ -424,6 +443,10 @@ const feedAlerts = () => {
         const name = alrt.name;
         // Parent list element
         const li = document.createElement("li");
+        
+        li.addEventListener("contextmenu", e => {
+            alertRequest(name);
+        });
         // Device label
         const span = document.createElement("span");
         span.innerHTML = `${name}<strong>${alrt.type}</strong>`;
@@ -476,8 +499,8 @@ const processNewAlert = async (e) => {
             // Validate another alert with this name
             const alrtNamed = ALERTS.find(al => al.name == name);
             if (alrtNamed) {
-                alert("This alert name is already taken.");
-                continue;
+                const confrm = confirm("This alert name is already taken. Do you wanna overwrite it?");
+                if (!confrm) continue;
             }
             // Save alert
             serverUpdateAlert(
