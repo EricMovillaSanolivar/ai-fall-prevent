@@ -411,7 +411,7 @@ let CURR_ALERT;
  * Show alerts modal
  */
 const alertRequest = (alertName) => {
-    if (!alertName) {
+    if (typeof(alertName) != "string") {
         // Clear form
         $alertType.value = "";
         $alertId.value = "";
@@ -422,7 +422,7 @@ const alertRequest = (alertName) => {
     } else {
         // Find alert
         CURR_ALERT = ALERTS.find(al => al.name == alertName);
-        if (!CURR_ALERT) return console.log("Alert channel not found.");
+        if (!CURR_ALERT) return console.error("Alert channel not found.");
         // Populate form
         $alertType.value = CURR_ALERT.type;
         $alertId.value = CURR_ALERT.id;
