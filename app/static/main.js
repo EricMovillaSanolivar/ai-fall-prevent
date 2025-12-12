@@ -443,6 +443,7 @@ const feedAlerts = () => {
         const name = alrt.name;
         // Parent list element
         const li = document.createElement("li");
+        li.title = "Press right click to edit alert channel.";
         
         // Device label
         const span = document.createElement("span");
