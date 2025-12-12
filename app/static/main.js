@@ -558,6 +558,7 @@ const processAlert = (alert, src) => {
 ***********************************************************************************/
 
 const pipeline = () => {
+    console.log("Pipeline tick");
     // Filter monitored sources
     const monitoring = [...activeSourcesList].filter(src => src.monitoring);
     // Validate there are sources for monitoring
@@ -888,6 +889,7 @@ const setUp = async () => {
                 CURRENT_BBX = undefined;
                 $sourcesModal.close();
                 feedSources();
+                pipeline();
             }
         );
     })
@@ -919,3 +921,4 @@ setUp();
 
 
 $preview.addEventListener("click", findGeofence);
+window.addEventListener("resize", pipeline);
