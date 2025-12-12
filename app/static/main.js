@@ -919,6 +919,5 @@ const setUp = async () => {
 
 setUp();
 
-
 $preview.addEventListener("click", findGeofence);
-window.addEventListener("resize", pipeline);
+window.addEventListener("resize", updateFeed);
